@@ -4,26 +4,29 @@ import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 
 export default function LoginPage() {
-  const { login } = useApp();
+  const { login, signup } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       alert("メールアドレスとパスワードを入力してください。");
       return;
     }
-    // Simulate login
-    login(email, password, name || "ユーザー");
+
+    if (isSignUp) {
+      await signup(email, password, name || "ユーザー");
+    } else {
+      await login(email, password);
+    }
   };
 
   return (
     <div className="flex flex-col flex-1 justify-center px-8 py-12 bg-gradient-to-b from-indigo-50/50 via-white to-pink-50/30">
       <div className="flex flex-col items-center mb-10">
-        {/* Cute Mascot Group Icon */}
         <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center shadow-inner mb-4 relative overflow-hidden animate-bounce-gentle">
           <div className="absolute inset-0 bg-gradient-to-tr from-indigo-200/50 to-pink-200/50" />
           <span className="text-4xl relative z-10">💬</span>
@@ -31,7 +34,7 @@ export default function LoginPage() {
         <h1 className="text-4xl font-extrabold tracking-wider text-slate-800 font-sans">
           ピコ <span className="text-indigo-600">Pico</span>
         </h1>
-        <p className="text-sm text-slate-500 mt-2 text-center max-w-xs">
+        <p className="text-sm text-slate-500 mt-2 text-center max-w-xs font-medium">
           話しかけるだけで、今日のあなたの本音がそっと日記になる。一人暮らしのAIパートナー。
         </p>
       </div>
@@ -44,7 +47,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">
+              <label className="block text-xs font-bold text-slate-500 mb-1 ml-1">
                 お名前 (何て呼ばれたい？)
               </label>
               <input
@@ -58,7 +61,7 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">
+            <label className="block text-xs font-bold text-slate-500 mb-1 ml-1">
               メールアドレス
             </label>
             <input
@@ -72,7 +75,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">
+            <label className="block text-xs font-bold text-slate-500 mb-1 ml-1">
               パスワード
             </label>
             <input
@@ -87,7 +90,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white font-bold py-3 rounded-2xl transition-all shadow-md active:scale-98 text-sm mt-2"
+            className="w-full bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white font-bold py-3 rounded-2xl transition-all shadow-md active:scale-98 text-sm mt-2 cursor-pointer"
           >
             {isSignUp ? "アカウント登録してはじめる" : "ログインしてはじめる"}
           </button>
@@ -96,7 +99,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-xs text-indigo-500 hover:underline font-semibold focus:outline-none"
+            className="text-xs text-indigo-500 hover:underline font-semibold focus:outline-none cursor-pointer"
           >
             {isSignUp
               ? "すでにアカウントをお持ちですか？ログインはこちら"

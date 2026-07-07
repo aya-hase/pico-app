@@ -6,7 +6,7 @@ import { useApp } from "@/context/AppContext";
 import NavBar from "@/components/NavBar";
 
 export default function HomePage() {
-  const { user, character, diaries } = useApp();
+  const { user, profile, character, diaries, schedules } = useApp();
 
   // Guard loading state
   if (!user) return null;
@@ -55,6 +55,60 @@ export default function HomePage() {
     return "お疲れ様です、";
   };
 
+  // Filter today's schedules
+  const todayStr = new Date().toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).replace(/\//g, "-");
+
+  const todaySchedules = schedules.filter(s => s.event_date === todayStr);
+
+  // Check if past reminder time
+  const getReminderGreeting = () => {
+    const now = new Date();
+    let tokyoTimeStr = "";
+    try {
+      tokyoTimeStr = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false
+      }).format(now);
+    } catch (e) {
+      // Fallback if Intl format fails
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      tokyoTimeStr = `${hours}:${minutes}`;
+    }
+    
+    const [currentHour, currentMin] = tokyoTimeStr.split(":").map(Number);
+
+    const reminderTime = profile?.reminder_time || "20:00";
+    const [targetHour, targetMin] = reminderTime.split(":").map(Number);
+
+    const isPastReminder = (currentHour > targetHour) || (currentHour === targetHour && currentMin >= targetMin);
+    const hasTodayDiary = diaries.some(d => d.date === todayStr);
+
+    if (isPastReminder && !hasTodayDiary) {
+      const uName = profile?.display_name || "ユーザー";
+      const scheduleText = todaySchedules.length > 0 ? `『${todaySchedules[0].event_name}』` : "今日の出来事";
+      
+      if (character === "clara") {
+        return `${uName}ちゃん、お約束の${reminderTime}を過ぎたよぉ。${scheduleText}はどうだったかなぁ？くららにお話ししよぉ？`;
+      } else if (character === "maro") {
+        return `おつかれ〜。設定してた${reminderTime}過ぎてるよ。今日の${scheduleText}とか、そろそろダラダラ話そうよ。`;
+      } else {
+        return `${uName}さん！約束の${reminderTime}になったよ！今日の${scheduleText}のこと、早くフレデリカに教えてー！`;
+      }
+    }
+    return null;
+  };
+
+  const reminderGreeting = getReminderGreeting();
+  const displayGreeting = reminderGreeting || currentTheme.greeting;
+
   return (
     <div className={`flex flex-col flex-1 overflow-hidden bg-gradient-to-b ${currentTheme.bgColor}`}>
       {/* Header */}
@@ -63,7 +117,7 @@ export default function HomePage() {
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Pico Partner</p>
           <h1 className="text-lg font-bold text-slate-800">
             {getPeriodGreeting()}
-            <span className="text-indigo-600">{user.name}</span>さん
+            <span className="text-indigo-600">{profile?.display_name || "ユーザー"}</span>さん
           </h1>
         </div>
         <Link href="/settings" className="w-9 h-9 rounded-full overflow-hidden border-2 border-indigo-400 bg-indigo-50 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 transition-transform">
@@ -72,19 +126,19 @@ export default function HomePage() {
             alt={currentTheme.name}
             width={32}
             height={32}
-            className="object-contain"
+            className="object-contain w-full h-full"
           />
         </Link>
       </header>
 
       {/* Main Scrollable Area */}
       <main className="flex-1 overflow-y-auto px-6 py-4 space-y-6 relative z-10">
-        
+
         {/* Proactive Character Greeting Card */}
         <div className={`p-5 rounded-3xl border ${currentTheme.cardBg} shadow-lg relative overflow-hidden flex flex-col items-center text-center mt-2`}>
           <div className="absolute top-3 right-4">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${currentTheme.tagColor}`}>
-              話し相手
+            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${currentTheme.tagColor}`}>
+              {reminderGreeting ? "お約束の時間" : "話し相手"}
             </span>
           </div>
 
@@ -95,24 +149,53 @@ export default function HomePage() {
               alt={currentTheme.name}
               fill
               priority
-              className="object-contain drop-shadow-md"
+              className="object-contain drop-shadow-md animate-float"
+              sizes="(max-width: 768px) 100vw, 112px"
             />
           </div>
 
           <h2 className="text-xl font-bold text-slate-800">{currentTheme.name}</h2>
           <p className="text-xs text-slate-400 mb-3">{currentTheme.jpDesc}</p>
-          
+
           <p className="text-sm font-medium leading-relaxed text-slate-700 px-2 mb-4 bg-white/60 p-3 rounded-2xl border border-white/40">
-            「{currentTheme.greeting}」
+            「{displayGreeting}」
           </p>
 
           <Link
             href="/chat"
-            className={`w-full py-3 text-white font-bold rounded-2xl transition-all shadow-md active:scale-98 text-sm text-center ${currentTheme.btnBg}`}
+            className={`w-full py-3 text-white font-bold rounded-2xl transition-all shadow-md active:scale-98 text-sm text-center cursor-pointer ${currentTheme.btnBg}`}
           >
-            おしゃべりをはじめる
+            {reminderGreeting ? "振り返りチャットをはじめる" : "おしゃべりをはじめる"}
           </Link>
         </div>
+
+        {/* Today's Schedule Card */}
+        {todaySchedules.length > 0 && (
+          <div className="bg-white/80 backdrop-blur-md p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2">
+            <h3 className="text-xs font-bold text-slate-400 flex items-center gap-1.5 px-1 uppercase tracking-wider">
+              📅 今日の予定
+            </h3>
+            <div className="space-y-2">
+              {todaySchedules.map((sch) => (
+                <div key={sch.id} className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📍</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-700">{sch.event_name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono font-medium">
+                        {sch.event_time ? sch.event_time : "時間未指定"}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sch.is_followed_up ? "bg-slate-100 text-slate-400" : "bg-indigo-50 text-indigo-600 animate-pulse"
+                    }`}>
+                    {sch.is_followed_up ? "振り返り完了" : "未確認（会話で振り返る）"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Recent Diaries Section */}
         <div>
@@ -155,7 +238,6 @@ export default function HomePage() {
 
       </main>
 
-      {/* Navigation bar */}
       <NavBar />
     </div>
   );

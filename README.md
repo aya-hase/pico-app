@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🫧 Pico（ピコ） - AI話し相手アプリ
 
-## Getting Started
+> ポケットからぴこっと顔を出して、今日のあなたに話しかけてくれる。
 
-First, run the development server:
+---
+
+## 📖 アプリ概要
+
+一人暮らしの孤独を和らげる、AI話し相手Webアプリです。  
+チャットで日常を話すだけで、予定の自動登録・日記の自動生成・フォローアップまでやってくれます。
+
+---
+
+## ✨ 主な機能
+
+### 🗨️ AIキャラとのチャット
+3種類のキャラクターから選んで会話できます。キャラごとに口調・性格が異なり、ネガティブな気持ちにも「おためごかし」なしで寄り添います。
+
+| キャラ | 種族 | 性格 |
+|--------|------|------|
+| くらら | クラゲ | ゆるっとのんびり・世話焼き |
+| まろ | マシュマロ | だらーん共感系・シニカル |
+| フレデリカ | サボテン | 元気ポジティブ・応援団 |
+
+### 📅 予定の自動登録・フォローアップ
+チャット中に「明日15時に面談がある」と話すと、AIが予定を検出してカレンダーに自動登録。予定当日には「面談どうだった？」と自然に話しかけてくれます。
+
+### 📓 日記の自動生成（ジャーナリング）
+その日の会話内容をGemini AIが要約し、箇条書き日記を自動生成。ポジティブへの無理な言い換えなし、本音ベースで記録します。
+
+### ⏰ 話しかけてほしい時間の設定（実装予定）
+指定した時間にアプリを開くと、キャラが「お話ししよ？」と話しかけてくれる機能。
+
+---
+
+## 🛠️ 技術スタック
+
+| カテゴリ | 技術 |
+|----------|------|
+| フロントエンド | Next.js (App Router), Tailwind CSS |
+| 認証・DB | Supabase (Auth / PostgreSQL) |
+| AI | Google Gemini API (`gemini-3.5-flash`) |
+| ホスティング | Vercel |
+
+---
+
+## 🗄️ DBテーブル構成
+
+```
+profiles   - ユーザープロフィール・キャラクター設定
+chats      - 会話履歴（共有スレッド）
+diaries    - AI自動生成日記（箇条書き＋気分）
+schedules  - チャットから抽出した予定・フォローアップ管理
+```
+
+---
+
+## 📱 画面一覧
+
+- **ホーム** - キャラクターの挨拶・今日の予定・最近の日記
+- **おしゃべり** - AIキャラとのチャット画面（感情リアクション付き）
+- **予定表** - カレンダー形式のスケジュール管理
+- **日記** - AI自動生成日記の一覧・詳細表示
+- **ピコ設定** - キャラクター選択・プロフィール編集
+
+---
+
+## 💡 こだわりポイント
+
+- **おためごかし禁止ルール** - 「明日はきっといい日になる！」系の空虚な励ましをプロンプトレベルで禁止。ネガティブな感情はネガティブなまま受け止める設計。
+- **感情リアクション** - AIの返答に応じてキャラのアバターが表情・アニメーションで変化（happy / sad / relaxed / angry / normal）。
+- **予定の文脈理解** - 「明日」「木曜日」などの相対的な日付表現をGeminiが今日の日付から計算して正確にDBへ登録。git add .
+
+---
+
+## 🚀 環境構築
+
+```bash
+git clone https://github.com/aya-hase/pico-app.git
+cd pico-app
+npm install
+```
+
+`.env.local` を作成して以下を設定：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+GEMINI_API_KEY=your_gemini_api_key
+```
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
