@@ -80,8 +80,8 @@ erDiagram
         text display_name
         text selected_character
         text reminder_time
-        text emotion "UIと連動"
         timestamptz updated_at
+        
     }
     chats {
         uuid id PK
