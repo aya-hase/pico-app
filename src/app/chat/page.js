@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useApp } from "@/context/AppContext";
 import NavBar from "@/components/NavBar";
+import { supabase } from "@/lib/supabase";
 
 export default function ChatPage() {
   const { character, messages, sendMessage, saveDiaryDirect, clearCurrentChat, isAiTyping, getTokyoDateStr } = useApp();
@@ -147,9 +148,15 @@ export default function ChatPage() {
     setPreviewMood("normal");
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await fetch("/api/diary", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ messages: todayMessages })
       });
 
@@ -162,7 +169,7 @@ export default function ChatPage() {
       setPreviewMood(data.overall_mood || "normal");
     } catch (e) {
       console.error(e);
-      alert("日記の生成中にエラーが発生しました: " + e.message);
+      alert("日記の要約の生成中にエラーが発生しました。しばらく待ってから再度お試しください。");
       setShowPreviewModal(false);
     } finally {
       setIsGeneratingPreview(false);
@@ -172,9 +179,15 @@ export default function ChatPage() {
   const handleRegeneratePreview = async () => {
     setIsGeneratingPreview(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await fetch("/api/diary", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ messages: todayMessages })
       });
 
@@ -187,7 +200,7 @@ export default function ChatPage() {
       setPreviewMood(data.overall_mood || "normal");
     } catch (e) {
       console.error(e);
-      alert("再生成中にエラーが発生しました: " + e.message);
+      alert("日記の再生成中にエラーが発生しました。しばらく待ってから再度お試しください。");
     } finally {
       setIsGeneratingPreview(false);
     }

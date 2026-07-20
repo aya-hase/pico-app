@@ -5,12 +5,17 @@ import { useApp } from "@/context/AppContext";
 import NavBar from "@/components/NavBar";
 
 export default function CalendarPage() {
-  const { schedules, deleteSchedule, getTokyoDateStr } = useApp();
+  const { schedules, deleteSchedule, addScheduleDirect, getTokyoDateStr } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   
   // Initial selected date is today in Tokyo timezone
   const todayTokyoStr = getTokyoDateStr();
   const [selectedDateStr, setSelectedDateStr] = useState(todayTokyoStr);
+
+  // States for adding new schedule manually
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newEventName, setNewEventName] = useState("");
+  const [newEventTime, setNewEventTime] = useState("");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
@@ -146,13 +151,20 @@ export default function CalendarPage() {
 
         {/* Selected Date Details */}
         <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-          <div className="flex justify-between items-baseline border-b border-slate-100 pb-2">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-sans">
               📅 {selectedDateStr} の予定
             </h3>
-            <span className="text-[10px] text-slate-400 font-bold">
-              {activeSchedules.length} 件の登録
-            </span>
+            <button
+              onClick={() => {
+                setNewEventName("");
+                setNewEventTime("");
+                setShowAddModal(true);
+              }}
+              className="text-xs text-indigo-600 hover:text-indigo-700 font-bold bg-indigo-50 px-2.5 py-1.5 rounded-xl cursor-pointer active:scale-95 transition-all"
+            >
+              ＋ 予定を追加
+            </button>
           </div>
 
           {activeSchedules.length === 0 ? (
@@ -196,6 +208,79 @@ export default function CalendarPage() {
         </section>
 
       </main>
+
+      {/* Add Schedule Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-xs overflow-hidden flex flex-col animate-scale-up">
+            
+            {/* Modal Header */}
+            <header className="px-5 py-4 bg-indigo-50/50 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">予定の直接追加</span>
+                <h3 className="text-sm font-bold text-slate-800">{selectedDateStr}</h3>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-full cursor-pointer transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </header>
+
+            {/* Modal Content */}
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500">予定の名前</label>
+                <input
+                  type="text"
+                  value={newEventName}
+                  onChange={(e) => setNewEventName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 font-medium bg-slate-50"
+                  placeholder="例：美容院、会議、食事など"
+                  maxLength={30}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500">時間 (省略可)</label>
+                <input
+                  type="time"
+                  value={newEventTime}
+                  onChange={(e) => setNewEventTime(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 font-mono font-medium bg-slate-50"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <footer className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex gap-2 justify-end">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 border border-slate-200 hover:bg-slate-100 text-slate-500 font-bold text-xs py-2 rounded-xl transition-all cursor-pointer"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => {
+                  if (!newEventName.trim()) {
+                    alert("予定の名前を入力してください。");
+                    return;
+                  }
+                  addScheduleDirect(newEventName.trim(), selectedDateStr, newEventTime || null);
+                  setShowAddModal(false);
+                }}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
+              >
+                登録する
+              </button>
+            </footer>
+
+          </div>
+        </div>
+      )}
 
       <NavBar />
     </div>

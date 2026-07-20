@@ -1,8 +1,59 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+async function verifyAuth(req) {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  const token = authHeader.split(" ")[1];
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase environment variables are missing");
+  }
+  
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return null;
+  }
+  return user;
+}
+
+function extractFirstJsonObject(text) {
+  const start = text.indexOf("{");
+  if (start === -1) {
+    throw new Error("No JSON object found in AI response: " + text.slice(0, 200));
+  }
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    if (text[i] === "}") depth--;
+    if (depth === 0) {
+      return text.slice(start, i + 1);
+    }
+  }
+  throw new Error("No matching closing brace found in AI response: " + text.slice(0, 200));
+}
 
 export async function POST(req) {
   try {
+    // 門番チェック：ログインしていないユーザーからのリクエストを弾く
+    let authenticatedUser;
+    try {
+      authenticatedUser = await verifyAuth(req);
+    } catch (authErr) {
+      console.error("Auth check failed with system error:", authErr);
+      return NextResponse.json({ error: "Auth verification failed" }, { status: 500 });
+    }
+
+    if (!authenticatedUser) {
+      return NextResponse.json({ error: "Unauthorized access: Please login first." }, { status: 401 });
+    }
+
     const { messages = [] } = await req.json();
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -45,7 +96,7 @@ export async function POST(req) {
   "bullet_points": [
     "箇条書き要約1",
     "箇条書き要約2",
-    "箇安全な書き要約3"
+    "箇条書き要約3"
   ],
   "overall_mood": "全体の気分"
 }
@@ -57,7 +108,7 @@ export async function POST(req) {
     let replyText = "";
     try {
       // 1. Primary: gemini-3.5-flash
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI.getGenerativeModel({
         model: "gemini-3.5-flash",
         systemInstruction: systemPrompt
       });
@@ -66,6 +117,10 @@ export async function POST(req) {
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.2,
+          maxOutputTokens: 1024,
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
         }
       });
       replyText = response.response.text();
@@ -73,7 +128,7 @@ export async function POST(req) {
       console.warn("Primary gemini-3.5-flash failed for diary summary. Trying fallback gemini-3.1-flash-lite...", primaryErr.message);
       try {
         // 2. Fallback: gemini-3.1-flash-lite
-        const model = genAI.getGenerativeModel({ 
+        const model = genAI.getGenerativeModel({
           model: "gemini-3.1-flash-lite",
           systemInstruction: systemPrompt
         });
@@ -82,13 +137,17 @@ export async function POST(req) {
           generationConfig: {
             responseMimeType: "application/json",
             temperature: 0.2,
+            maxOutputTokens: 1024,
+            thinkingConfig: {
+              thinkingBudget: 0
+            }
           }
         });
         replyText = response.response.text();
       } catch (fallbackErr) {
         console.warn("Fallback gemini-3.1-flash-lite failed. Trying backup gemini-2.5-flash...", fallbackErr.message);
         // 3. Backup: gemini-2.5-flash
-        const model = genAI.getGenerativeModel({ 
+        const model = genAI.getGenerativeModel({
           model: "gemini-2.5-flash",
           systemInstruction: systemPrompt
         });
@@ -97,13 +156,22 @@ export async function POST(req) {
           generationConfig: {
             responseMimeType: "application/json",
             temperature: 0.2,
+            maxOutputTokens: 1024,
+            thinkingConfig: {
+              thinkingBudget: 0
+            }
           }
         });
         replyText = response.response.text();
       }
     }
 
-    const parsedData = JSON.parse(replyText);
+    // Clean text and extract first valid JSON block
+    let cleanText = replyText.trim();
+    cleanText = cleanText.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    const jsonOnly = extractFirstJsonObject(cleanText);
+    const parsedData = JSON.parse(jsonOnly);
     return NextResponse.json(parsedData);
   } catch (error) {
     console.error("Error in diary api route after fallbacks:", error);
