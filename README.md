@@ -1,13 +1,9 @@
-# 🫧 Pico（ピコ） - AI話し相手アプリ
+# 🫧 Pico（ピコ）— AI話し相手アプリ
 
 > ポケットからぴこっと顔を出して、今日のあなたに話しかけてくれる。
 
----
-
-## 📖 アプリ概要
-
 一人暮らしの孤独を和らげる、AI話し相手Webアプリです。  
-チャットで日常を話すだけで、予定の自動登録・日記の自動生成・フォローアップまで全自動で行います。
+チャットで日常を話すだけで、**予定の自動登録・日記の自動生成・フォローアップ**まで全自動でやってくれます。
 
 ---
 
@@ -20,47 +16,113 @@
 
 ## 🎨 徹底した心理的デザイン（こだわりポイント）
 
-* **1. 「話した内容を覚えている」安心感と文脈理解**
-  会話から「明日」「木曜日」などの相対的な日時をGeminiが計算しカレンダーへ自動登録。予定当日以降に「面談どうだった？」と**能動的にフォローアップ**を投げます。
-* **2. 「書く」のではなく「会話が日記になる」体験**
-  会話履歴を裏側でGeminiが要約し、箇条書き日記を自動生成。「明日はいい日になる！」系の空虚な励まし（おためごかし）をプロンプトで禁止し、**本音ベースのリアルな内省**を可能にしました。
-* **3. 視覚的な感情リアクション × 依存防止設計**
-  AIの感情データ（5種）に応じてアバターの「枠線の色」「アニメーション」「感情バッジ」をリアルタイムに制御。また、過度なAI依存を防ぐため、キャラは人間ではなく「クラゲ・マシュマロ・サボテン」といった**無機質すぎないモチーフ**にデザインしました。
-* **4. APIエラーを防ぐ自動フォールバック構成**
-  メインモデル（`gemini-2.5-flash`）のエラー時、即座に軽量モデル（`gemini-2.0-flash-lite` 等）へシームレスに切り替える機構を実装し、高い可用性を担保しています。
+### 1. 会話がそのまま日記になる（メイン機能）
+チャット履歴を裏側でGeminiが要約し、箇条書きの日記を自動生成します。プロンプトで**「明日はいい日になる」系の空虚な励まし（おためごかし）を明示的に禁止**し、本音ベースのリアルな内省ログになるよう設計しています。
+
+### 2. 文脈を覚えているフォローアップ
+会話から「明日」「木曜日」などの相対的な日時をGeminiが計算しカレンダーへ自動登録。予定当日以降に「〇〇どうだった？」と**能動的にフォローアップ**を投げます。
+
+### 3. 感情に応じたビジュアルフィードバック × 依存防止設計
+AIの感情（happy / sad / relaxed / angry / normal）に応じて、アバターの枠線色・アニメーション・感情バッジをリアルタイムに切り替え。また、過度なAI依存を防ぐため、キャラは人間ではなく「クラゲ・マシュマロ・サボテン」のような**無機質になりすぎないモチーフ**にデザインしました。
+
+### 4. APIエラーに強いフォールバック構成
+Gemini APIの呼び出しは3段階のフォールバック構成にしており、上位モデルで失敗しても自動的に切り替わって高い可用性を担保し、応答を継続します。
+
+<details>
+<summary>その他の工夫（クリックで展開）</summary>
+
+- 音声入力対応（Web Speech API）
+- ローカルストレージの旧キャッシュを自動クリーンアップし、型不整合によるクラッシュを防止
+- 予定の重複自動登録防止（同日・同名の予定は再登録しない）
+
+</details>
 
 ---
 
 ## ✨ 機能と技術スタック
 
-### 🗨️ AIキャラ一覧
+### 🗨️ AIキャラクター一覧
+
 | キャラ | 種族 | 性格・特徴 |
-|--------|------|------------|
+|---|---|---|
 | くらら | クラゲ | ゆるっとのんびり・世話焼き |
 | まろ | マシュマロ | だらーん共感系・ちょっとシニカル |
 | フレデリカ | サボテン | 元気ポジティブ・応援団 |
 
 ### 🛠️ 技術スタック
-* **フロントエンド**: Next.js (App Router), Tailwind CSS
-* **認証・データベース**: Supabase (Auth / PostgreSQL)
-* **AI API**: Google Gemini API（複数モデルへの自動フォールバック構成）
-* **ホスティング**: Vercel
+
+| 分類 | 技術 |
+|---|---|
+| フロントエンド | Next.js (App Router), Tailwind CSS |
+| 認証・DB | Supabase (Auth / PostgreSQL) |
+| AI API | Google Gemini API（3段階フォールバック構成） |
+| ホスティング | Vercel |
+
+**Geminiフォールバック構成:**
+`gemini-3.5-flash`（プライマリ）→ `gemini-3.1-flash-lite`（フォールバック）→ `gemini-2.5-flash`（バックアップ）
 
 ---
 
-## 🗄️ DBテーブル構成 (Supabase)
+## 🗄️ DB構成 (Supabase)
 
-* **`profiles`（ユーザー設定）**：`id(PK/FK)`, `display_name`, `selected_character`, `reminder_time`
-* **`chats`（会話履歴）**：`id(PK)`, `user_id(FK)`, `sender(user/ai)`, `character`, `content`, `emotion`（動的UIと連動）
-* **`diaries`（自動生成日記）**：`id(PK)`, `user_id(FK)`, `date`, `bullet_points(jsonb)`, `overall_mood`
-* **`schedules`（予定管理）**：`id(PK)`, `user_id(FK)`, `event_name`, `event_date`, `event_time`, `is_followed_up`（重複発言防止フラグ）
+```mermaid
+erDiagram
+    auth_users ||--o| profiles : "has"
+    auth_users ||--o{ chats : "has"
+    auth_users ||--o{ diaries : "has"
+    auth_users ||--o{ schedules : "has"
+
+    auth_users {
+        uuid id PK
+    }
+    profiles {
+        uuid id "PK, FK"
+        text display_name
+        text selected_character
+        text reminder_time
+        text emotion "UIと連動"
+        timestamptz updated_at
+    }
+    chats {
+        uuid id PK
+        uuid user_id FK
+        text sender "user or ai"
+        text character
+        text content
+        text emotion "UIと連動"
+        timestamptz created_at
+    }
+    diaries {
+        uuid id PK
+        uuid user_id FK
+        date date
+        jsonb bullet_points
+        text overall_mood
+        timestamptz created_at
+    }
+    schedules {
+        uuid id PK
+        uuid user_id FK
+        text event_name
+        date event_date
+        text event_time
+        bool is_followed_up "重複フォロー防止フラグ"
+        timestamptz created_at
+    }
+```
+
+> `profiles`, `chats`, `diaries`, `schedules` はいずれも Supabase の `auth.users` を直接参照する構成（`profiles` を親にしたリレーションではない）。
 
 ---
 
 ## 📱 画面一覧
 
-* **ホーム**：キャラクターの挨拶、今日の予定、最近の日記プレビューを表示
-* **おしゃべり**：AIキャラとのチャット画面（感情連動エフェクト、音声入力対応）
-* **予定表**：カレンダー形式で自動登録されたスケジュールを確認できる画面
-* **日記**：AIが自動生成した日記の一覧・詳細確認、およびユーザーによる編集画面
-* **ピコ設定**：キャラクター選択・プロフィール編集画面
+| 画面 | 内容 |
+|---|---|
+| ホーム | キャラの挨拶、今日の予定、最近の日記プレビュー |
+| おしゃべり | AIキャラとのチャット（感情連動エフェクト、音声入力対応） |
+| 予定表 | 登録されたスケジュールをカレンダー形式で確認（手動登録可） |
+| 日記 | AI生成の日記一覧・詳細・編集 |
+| ピコ設定 | プロフィール編集・話しかける時間設定・キャラクター選択 |
+
+---
