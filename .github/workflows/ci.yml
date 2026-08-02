@@ -1,0 +1,36 @@
+name: CI (Pico App Test & Build Check)
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Run Next.js build check
+        run: npm run build
+        env:
+          # GitHub Actionsのビルドチェック用にダミーの環境変数を定義します。
+          # 本番の秘密鍵をGitHubのコード上に直接書かないための標準的な安全対策です。
+          NEXT_PUBLIC_SUPABASE_URL: "https://your-project.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy"
+          GEMINI_API_KEY: "AIzaSyDummyKey"

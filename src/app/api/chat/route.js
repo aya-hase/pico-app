@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { extractFirstJsonObject } from "../../../lib/jsonHelper";
 
 async function verifyAuth(req) {
   const authHeader = req.headers.get("Authorization");
@@ -21,22 +22,6 @@ async function verifyAuth(req) {
     return null;
   }
   return user;
-}
-
-function extractFirstJsonObject(text) {
-  const start = text.indexOf("{");
-  if (start === -1) {
-    throw new Error("No JSON object found in AI response: " + text.slice(0, 200));
-  }
-  let depth = 0;
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === "{") depth++;
-    if (text[i] === "}") depth--;
-    if (depth === 0) {
-      return text.slice(start, i + 1);
-    }
-  }
-  throw new Error("No matching closing brace found in AI response: " + text.slice(0, 200));
 }
 
 export async function POST(req) {
