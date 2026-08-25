@@ -106,8 +106,41 @@ export default function HomePage() {
     return null;
   };
 
+  // Get yesterday's date in Tokyo timezone (YYYY-MM-DD format)
+  const getYesterdayTokyoDateStr = () => {
+    const now = new Date();
+    // Format to Tokyo timezone parts to handle server/client timezone difference
+    const formatter = new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
+    const parts = formatter.formatToParts(now);
+    const dateParts = {};
+    parts.forEach(p => { dateParts[p.type] = p.value; });
+    
+    // Construct local midnight time in Tokyo, then subtract 1 day
+    const tokyoTime = new Date(`${dateParts.year}-${dateParts.month}-${dateParts.day}T12:00:00+09:00`);
+    tokyoTime.setDate(tokyoTime.getDate() - 1);
+    
+    const y = tokyoTime.getFullYear();
+    const m = String(tokyoTime.getMonth() + 1).padStart(2, "0");
+    const d = String(tokyoTime.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  // Find yesterday's diary and retrieve the pre-generated custom greeting
+  const getDiaryGreeting = () => {
+    if (!diaries || diaries.length === 0) return null;
+    const yesterdayStr = getYesterdayTokyoDateStr();
+    const yesterdayDiary = diaries.find(d => d.date === yesterdayStr);
+    return yesterdayDiary?.nextDayGreeting || null;
+  };
+
+  const diaryGreeting = getDiaryGreeting();
   const reminderGreeting = getReminderGreeting();
-  const displayGreeting = reminderGreeting || currentTheme.greeting;
+  const displayGreeting = reminderGreeting || diaryGreeting || currentTheme.greeting;
 
   return (
     <div className={`flex flex-col flex-1 overflow-hidden bg-gradient-to-b ${currentTheme.bgColor}`}>

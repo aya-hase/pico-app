@@ -18,6 +18,7 @@ export default function ChatPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewBullets, setPreviewBullets] = useState([]);
   const [previewMood, setPreviewMood] = useState("normal");
+  const [previewGreeting, setPreviewGreeting] = useState("");
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   
   const todayStr = getTokyoDateStr();
@@ -157,7 +158,7 @@ export default function ChatPage() {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ messages: todayMessages })
+        body: JSON.stringify({ messages: todayMessages, character })
       });
 
       if (!response.ok) {
@@ -167,6 +168,7 @@ export default function ChatPage() {
       const data = await response.json();
       setPreviewBullets(data.bullet_points || []);
       setPreviewMood(data.overall_mood || "normal");
+      setPreviewGreeting(data.next_day_greeting || "");
     } catch (e) {
       console.error(e);
       alert("日記の要約の生成中にエラーが発生しました。しばらく待ってから再度お試しください。");
@@ -188,7 +190,7 @@ export default function ChatPage() {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ messages: todayMessages })
+        body: JSON.stringify({ messages: todayMessages, character })
       });
 
       if (!response.ok) {
@@ -198,6 +200,7 @@ export default function ChatPage() {
       const data = await response.json();
       setPreviewBullets(data.bullet_points || []);
       setPreviewMood(data.overall_mood || "normal");
+      setPreviewGreeting(data.next_day_greeting || "");
     } catch (e) {
       console.error(e);
       alert("日記の再生成中にエラーが発生しました。しばらく待ってから再度お試しください。");
@@ -208,7 +211,7 @@ export default function ChatPage() {
 
   const handleSaveDiary = async () => {
     try {
-      await saveDiaryDirect(todayStr, previewBullets, previewMood);
+      await saveDiaryDirect(todayStr, previewBullets, previewMood, previewGreeting);
       setShowPreviewModal(false);
     } catch (e) {
       console.error(e);
@@ -528,6 +531,19 @@ export default function ChatPage() {
                           ))
                         )}
                       </div>
+                    </div>
+
+                    {/* Greeting Preview */}
+                    <div className="space-y-1.5 pt-2 border-t border-slate-100/60">
+                      <label className="text-xs font-bold text-slate-500">明日キャラクターがかけてくれる言葉（編集できます）</label>
+                      <textarea
+                        value={previewGreeting}
+                        onChange={(e) => setPreviewGreeting(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 font-medium leading-relaxed resize-none"
+                        placeholder="明日かけるメッセージを入力..."
+                        maxLength={150}
+                      />
                     </div>
                   </>
                 )}

@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,15 +18,27 @@ export default function LoginPage() {
       return;
     }
 
-    if (isSignUp) {
-      await signup(email, password, name || "ユーザー");
-    } else {
-      await login(email, password);
+    setIsSubmitting(true);
+
+    try {
+      if (isSignUp) {
+        const success = await signup(email, password, name || "ユーザー");
+        if (success) {
+          // サインアップ成功後、自動的にログイン処理を実行
+          await login(email, password);
+        }
+      } else {
+        await login(email, password);
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex flex-col flex-1 justify-center px-8 py-12 bg-gradient-to-b from-indigo-50/50 via-white to-pink-50/30">
+    <div className="flex flex-col flex-1 justify-center px-8 py-12 bg-gradient-to-b from-indigo-50/50 via-white to-pink-50/30 min-h-screen">
       <div className="flex flex-col items-center mb-10">
         <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center shadow-inner mb-4 relative overflow-hidden animate-bounce-gentle">
           <div className="absolute inset-0 bg-gradient-to-tr from-indigo-200/50 to-pink-200/50" />
@@ -39,7 +52,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-slate-100">
+      <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-slate-100 max-w-sm mx-auto w-full">
         <h2 className="text-xl font-bold text-slate-700 mb-6 text-center">
           {isSignUp ? "新しくはじめる" : "おかえりなさい"}
         </h2>
@@ -90,14 +103,20 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white font-bold py-3 rounded-2xl transition-all shadow-md active:scale-98 text-sm mt-2 cursor-pointer"
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white font-bold py-3 rounded-2xl transition-all shadow-md active:scale-98 text-sm mt-2 cursor-pointer disabled:opacity-50"
           >
-            {isSignUp ? "アカウント登録してはじめる" : "ログインしてはじめる"}
+            {isSubmitting
+              ? "処理中..."
+              : isSignUp
+                ? "アカウント登録してはじめる"
+                : "ログインしてはじめる"}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <button
+            type="button"
             onClick={() => setIsSignUp(!isSignUp)}
             className="text-xs text-indigo-500 hover:underline font-semibold focus:outline-none cursor-pointer"
           >

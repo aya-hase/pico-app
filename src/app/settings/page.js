@@ -6,10 +6,13 @@ import { useApp } from "@/context/AppContext";
 import NavBar from "@/components/NavBar";
 
 export default function SettingsPage() {
-  const { user, profile, character, changeCharacter, updateProfileName, updateReminderTime, logout } = useApp();
+  const { user, profile, character, changeCharacter, updateProfileName, updateReminderTime, updatePassword, logout } = useApp();
   const [nameInput, setNameInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [reminderSuccess, setReminderSuccess] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   // Sync state with loaded profile
   useEffect(() => {
@@ -35,12 +38,28 @@ export default function SettingsPage() {
     setTimeout(() => setReminderSuccess(false), 2000);
   };
 
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (passwordInput.length < 6) {
+      alert("パスワードは6文字以上で入力してください。");
+      return;
+    }
+    setIsUpdatingPassword(true);
+    const success = await updatePassword(passwordInput);
+    setIsUpdatingPassword(false);
+
+    if (success) {
+      setPasswordInput("");
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordSuccess(false), 2000);
+    }
+  };
+
   // Generate 24 hour options: 00:00 to 23:00
   const timeOptions = Array.from({ length: 24 }, (_, i) => {
     const hour = String(i).padStart(2, "0");
     return `${hour}:00`;
   });
-
 
   const characters = [
     {
@@ -142,7 +161,6 @@ export default function SettingsPage() {
           )}
         </section>
 
-
         {/* Character Selection */}
         <section className="space-y-3">
           <h3 className="text-sm font-bold text-slate-700 px-1">パートナーを選択</h3>
@@ -155,8 +173,8 @@ export default function SettingsPage() {
                   key={char.id}
                   onClick={() => changeCharacter(char.id)}
                   className={`bg-white p-4 rounded-3xl border transition-all duration-300 cursor-pointer flex gap-4 items-center relative overflow-hidden hover:shadow-md ${isActive
-                      ? `ring-2 ${char.activeRing} scale-[1.01]`
-                      : "border-slate-100 hover:border-slate-200"
+                    ? `ring-2 ${char.activeRing} scale-[1.01]`
+                    : "border-slate-100 hover:border-slate-200"
                     }`}
                 >
                   <div className="w-16 h-16 relative flex-shrink-0 flex items-center justify-center bg-slate-50 rounded-2xl p-1 shadow-inner">
@@ -192,13 +210,41 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Account Settings / Logout */}
+        {/* Account Settings / Password / Logout */}
         <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4">
           <h3 className="text-sm font-bold text-slate-700">アカウント情報</h3>
 
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-400 font-semibold">メールアドレス</span>
             <span className="text-slate-600 font-medium">{user.email}</span>
+          </div>
+
+          {/* Password Change Form */}
+          <div className="pt-3 border-t border-slate-100 space-y-2">
+            <label className="block text-xs font-semibold text-slate-400">
+              パスワード変更
+            </label>
+            <form onSubmit={handleUpdatePassword} className="flex gap-2">
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="新しいパスワード (6文字以上)"
+                className="flex-1 px-4 py-2 text-sm rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+              <button
+                type="submit"
+                disabled={isUpdatingPassword}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-2xl transition-all shadow-sm active:scale-95 cursor-pointer flex-shrink-0 disabled:opacity-50"
+              >
+                {isUpdatingPassword ? "更新中..." : "変更"}
+              </button>
+            </form>
+            {passwordSuccess && (
+              <p className="text-[10px] text-green-600 font-bold ml-1 animate-pulse">
+                ✔ パスワードを変更しました！
+              </p>
+            )}
           </div>
 
           <div className="pt-2 border-t border-slate-100 flex justify-between items-center">

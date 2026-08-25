@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const AppContext = createContext();
@@ -18,19 +18,16 @@ export function AppProvider({ children }) {
   const [todayFollowUpSchedule, setTodayFollowUpSchedule] = useState(null);
 
   const router = useRouter();
-  const pathname = usePathname();
 
-  // 1. Cleans legacy localStorage mockup cache to prevent crashes (Type error: messages.filter is not a function)
+  // 1. 古いキャッシュの削除
   useEffect(() => {
     try {
       const storedMessages = localStorage.getItem("pico_messages");
       const storedDiaries = localStorage.getItem("pico_diaries");
 
-      // If the stored messages are formatted as an object (clara: [...], maro: [...]), delete them
       if (storedMessages && !Array.isArray(JSON.parse(storedMessages))) {
         localStorage.removeItem("pico_messages");
       }
-      // Clean diaries if they aren't formatted as an array
       if (storedDiaries && !Array.isArray(JSON.parse(storedDiaries))) {
         localStorage.removeItem("pico_diaries");
       }
@@ -41,22 +38,20 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // 2. Auth state subscription
+  // 2. 認証状態の検知
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUser(session.user);
-        fetchUserData(session.user.id);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUser(user);
+        fetchUserData(user.id);
       } else {
         setUser(null);
         setLoading(false);
       }
     });
 
-    // Listen to changes in auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (session?.user) {
         setUser(session.user);
         fetchUserData(session.user.id);
       } else {
@@ -73,26 +68,17 @@ export function AppProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 3. Page redirection if not logged in
-  useEffect(() => {
-    if (!loading && !user && pathname !== "/login") {
-      router.push("/login");
-    }
-  }, [user, loading, pathname, router]);
-
-  // 4. Fetch all user records from Supabase DB
+  // 3. ユーザーデータの取得
   const fetchUserData = async (userId) => {
     try {
       setLoading(true);
 
-      // Fetch profile settings
       let { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .single();
 
-      // Create a default profile if it doesn't exist yet
       if (profileError && profileError.code === "PGRST116") {
         const { data: newProfile, error: insError } = await supabase
           .from("profiles")
@@ -107,7 +93,6 @@ export function AppProvider({ children }) {
         setCharacter(profileData.selected_character);
       }
 
-      // Fetch chats (shared thread)
       const { data: chatsData } = await supabase
         .from("chats")
         .select("*")
@@ -115,7 +100,6 @@ export function AppProvider({ children }) {
         .order("created_at", { ascending: true });
       setMessages(chatsData || []);
 
-      // Fetch diaries
       const { data: diariesData } = await supabase
         .from("diaries")
         .select("*")
@@ -126,11 +110,11 @@ export function AppProvider({ children }) {
         id: d.id,
         date: d.date,
         bulletPoints: d.bullet_points,
-        overallMood: d.overall_mood
+        overallMood: d.overall_mood,
+        nextDayGreeting: d.next_day_greeting
       }));
       setDiaries(formattedDiaries);
 
-      // Fetch schedules
       const { data: schedulesData } = await supabase
         .from("schedules")
         .select("*")
@@ -138,13 +122,12 @@ export function AppProvider({ children }) {
         .order("event_date", { ascending: true });
       setSchedules(schedulesData || []);
 
-      // Check if there is an unfulfilled schedule today to ask about (follow-up)
       const todayStr = new Date().toLocaleDateString("ja-JP", {
         timeZone: "Asia/Tokyo",
         year: "numeric",
         month: "2-digit",
         day: "2-digit"
-      }).replace(/\//g, "-"); // Format as YYYY-MM-DD
+      }).replace(/\//g, "-");
 
       const followUp = (schedulesData || []).find(
         (s) => s.event_date === todayStr && !s.is_followed_up
@@ -171,38 +154,58 @@ export function AppProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert("ログインに失敗しました。メールアドレスまたはパスワードが間違っています。");
+    try {
+      console.log("Attempting signInWithPassword...", { email });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("signInWithPassword response:", { data, error });
+      
+      if (error) {
+        alert("ログインに失敗しました。メールアドレスまたはパスワードが間違っています。");
+        return false;
+      }
+      setUser(data.user);
+      window.location.href = "/";
+      return true;
+    } catch (e) {
+      console.error("Login catch block error:", e);
+      alert("ログイン中にエラーが発生しました（接続エラーなど）: " + e.message);
       return false;
     }
-    router.push("/");
-    return true;
   };
 
   const signup = async (email, password, displayName = "ユーザー") => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          display_name: displayName
+    try {
+      console.log("Attempting signUp...", { email, displayName });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName
+          }
         }
-      }
-    });
+      });
+      console.log("signUp response:", { data, error });
 
-    if (error) {
-      alert("アカウント登録に失敗しました。入力内容を確認するか、別のメールアドレスをお試しください。");
+      if (error) {
+        alert("アカウント登録に失敗しました。入力内容を確認するか、別のメールアドレスをお試しください。");
+        return false;
+      }
+
+      alert("サインアップが完了しました！自動ログインします。");
+      setUser(data.user);
+      window.location.href = "/";
+      return true;
+    } catch (e) {
+      console.error("Signup catch block error:", e);
+      alert("サインアップ中にエラーが発生しました（接続エラーなど）: " + e.message);
       return false;
     }
-
-    alert("サインアップが完了しました！自動ログインします。");
-    return true;
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   const changeCharacter = async (charName) => {
@@ -213,7 +216,6 @@ export function AppProvider({ children }) {
         .update({ selected_character: charName })
         .eq("id", user.id);
 
-      // Update local profile state
       setProfile(prev => prev ? { ...prev, selected_character: charName } : null);
     }
   };
@@ -228,7 +230,7 @@ export function AppProvider({ children }) {
       if (!error) {
         setProfile(prev => prev ? { ...prev, display_name: newName } : null);
       } else {
-        alert("名前の更新に失敗しました。しばらく待ってから再度お試しください。");
+        alert("名前の更新に失敗しました。");
       }
     }
   };
@@ -243,15 +245,27 @@ export function AppProvider({ children }) {
       if (!error) {
         setProfile(prev => prev ? { ...prev, reminder_time: time } : null);
       } else {
-        alert("お知らせ時間の更新に失敗しました。しばらく待ってから再度お試しください。");
+        alert("お知らせ時間の更新に失敗しました。");
       }
     }
+  };
+
+  const updatePassword = async (newPassword) => {
+    if (!user) return false;
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      alert("パスワードの変更に失敗しました: " + error.message);
+      return false;
+    }
+    return true;
   };
 
   const sendMessage = async (text) => {
     if (!text.trim() || !user) return;
 
-    // 1. Save user message to Supabase
     const userMsg = {
       user_id: user.id,
       sender: "user",
@@ -266,17 +280,12 @@ export function AppProvider({ children }) {
       .select()
       .single();
 
-    if (userMsgErr) {
-      console.error("Failed to save user message:", userMsgErr);
-      return;
-    }
+    if (userMsgErr) return;
 
-    // Update local chat logs
     setMessages(prev => [...prev, savedUserMsg]);
     setIsAiTyping(true);
 
     try {
-      // 2. Build history payload for Gemini (limit to last 20 messages to avoid token burden)
       const recentMessages = messages.slice(-20);
       const chatHistory = recentMessages.map(m => ({
         sender: m.sender,
@@ -285,7 +294,6 @@ export function AppProvider({ children }) {
         character: m.character
       }));
 
-      // Gather schedule followups if any
       const todaySchedules = [];
       if (todayFollowUpSchedule) {
         todaySchedules.push({
@@ -296,21 +304,18 @@ export function AppProvider({ children }) {
         });
       }
 
-      // Get the last 7 diaries for context memory (covers a full week)
       const recentDiaries = diaries.slice(0, 7).map(d => ({
         date: d.date,
         bulletPoints: d.bulletPoints,
         mood: d.overallMood
       }));
 
-      // Get the Supabase Auth session token to authorize the API route call
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      // 3. Request Gemini API route
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
@@ -324,13 +329,10 @@ export function AppProvider({ children }) {
         })
       });
 
-      if (!response.ok) {
-        throw new Error("Chat API failed with status " + response.status);
-      }
+      if (!response.ok) throw new Error("Chat API failed");
 
       const data = await response.json();
 
-      // 4. Save AI response to Supabase
       const aiMsg = {
         user_id: user.id,
         sender: "ai",
@@ -345,29 +347,20 @@ export function AppProvider({ children }) {
         .select()
         .single();
 
-      if (aiMsgErr) {
-        throw aiMsgErr;
-      }
+      if (aiMsgErr) throw aiMsgErr;
 
       setMessages(prev => [...prev, savedAiMsg]);
 
-      // 5. Handle multiple schedule auto-insertions if detected (重複登録防止ロジック追加)
       if (data.schedules && data.schedules.length > 0) {
         const savedSchedules = [];
         for (const sch of data.schedules) {
-
-          // すでに手元の予定リスト（schedules）に同じ日付＆同じ名前のものがないかチェック
           const isDuplicate = schedules.some(
             (existingSch) =>
               existingSch.event_date === sch.event_date &&
               existingSch.event_name === sch.event_name
           );
 
-          // すでに予定が存在する場合は、新しく登録するのをスキップ（次の予定の処理へ）
-          if (isDuplicate) {
-            console.log(`重複予定のためスキップされました: ${sch.event_name} (${sch.event_date})`);
-            continue;
-          }
+          if (isDuplicate) continue;
 
           const scheduleRecord = {
             user_id: user.id,
@@ -392,7 +385,6 @@ export function AppProvider({ children }) {
         }
       }
 
-      // 6. Handle successful follow-up marker
       if (todayFollowUpSchedule) {
         await supabase
           .from("schedules")
@@ -407,7 +399,6 @@ export function AppProvider({ children }) {
 
     } catch (err) {
       console.error("Error communicating with AI:", err);
-      // Fallback message
       const fallbackMsg = {
         user_id: user.id,
         sender: "ai",
@@ -424,8 +415,6 @@ export function AppProvider({ children }) {
 
   const createDiaryFromChat = async () => {
     const todayStr = getTokyoDateStr();
-
-    // Filter chats to only include today's messages in Asia/Tokyo timezone
     const todayMessages = messages.filter(m => getTokyoDateStr(m.created_at) === todayStr);
 
     if (todayMessages.length === 0 || !user) {
@@ -436,48 +425,42 @@ export function AppProvider({ children }) {
     setIsAiTyping(true);
 
     try {
-      // Get the Supabase Auth session token to authorize the API route call
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      // 1. Call api/diary route to summarize using Gemini API
       const response = await fetch("/api/diary", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ messages: todayMessages })
+        body: JSON.stringify({ messages: todayMessages, character })
       });
 
-      if (!response.ok) {
-        throw new Error("Diary summarization failed");
-      }
+      if (!response.ok) throw new Error("Diary summarization failed");
 
       const data = await response.json();
 
-      // 2. Upsert diary record into Supabase
       const { data: savedDiary, error: diaryError } = await supabase
         .from("diaries")
         .upsert({
           user_id: user.id,
           date: todayStr,
           bullet_points: data.bullet_points,
-          overall_mood: data.overall_mood
+          overall_mood: data.overall_mood,
+          next_day_greeting: data.next_day_greeting
         }, { onConflict: "user_id, date" })
         .select()
         .single();
 
-      if (diaryError) {
-        throw diaryError;
-      }
+      if (diaryError) throw diaryError;
 
-      // 3. Format and update local state list
       const formatted = {
         id: savedDiary.id,
         date: savedDiary.date,
         bulletPoints: savedDiary.bullet_points,
-        overallMood: savedDiary.overall_mood
+        overallMood: savedDiary.overall_mood,
+        nextDayGreeting: savedDiary.next_day_greeting
       };
 
       setDiaries(prev => {
@@ -494,24 +477,30 @@ export function AppProvider({ children }) {
       router.push("/diary");
     } catch (err) {
       console.error("Error creating diary:", err);
-      alert("日記の要約に失敗しました。しばらく待ってから再度お試しください。");
+      alert("日記の要約に失敗しました。");
     } finally {
       setIsAiTyping(false);
     }
   };
 
-  const saveDiaryDirect = async (date, bulletPoints, overallMood) => {
+  const saveDiaryDirect = async (date, bulletPoints, overallMood, nextDayGreeting = null) => {
     if (!user) return;
     setIsAiTyping(true);
     try {
+      const upsertData = {
+        user_id: user.id,
+        date,
+        bullet_points: bulletPoints,
+        overall_mood: overallMood
+      };
+
+      if (nextDayGreeting !== null) {
+        upsertData.next_day_greeting = nextDayGreeting;
+      }
+
       const { data: savedDiary, error: diaryError } = await supabase
         .from("diaries")
-        .upsert({
-          user_id: user.id,
-          date,
-          bullet_points: bulletPoints,
-          overall_mood: overallMood
-        }, { onConflict: "user_id, date" })
+        .upsert(upsertData, { onConflict: "user_id, date" })
         .select()
         .single();
 
@@ -521,7 +510,8 @@ export function AppProvider({ children }) {
         id: savedDiary.id,
         date: savedDiary.date,
         bulletPoints: savedDiary.bullet_points,
-        overallMood: savedDiary.overall_mood
+        overallMood: savedDiary.overall_mood,
+        nextDayGreeting: savedDiary.next_day_greeting
       };
 
       setDiaries(prev => {
@@ -538,7 +528,7 @@ export function AppProvider({ children }) {
       router.push("/diary");
     } catch (err) {
       console.error("Error saving diary:", err);
-      alert("日記の保存に失敗しました。電波状況をご確認の上、再度お試しください。");
+      alert("日記の保存に失敗しました。");
     } finally {
       setIsAiTyping(false);
     }
@@ -563,7 +553,7 @@ export function AppProvider({ children }) {
       if (!error) {
         setMessages(prev => prev.filter(m => !todayIds.includes(m.id)));
       } else {
-        alert("チャットの削除に失敗しました。しばらく待ってからやり直してください。");
+        alert("チャットの削除に失敗しました。");
       }
     }
   };
@@ -606,7 +596,7 @@ export function AppProvider({ children }) {
       }
     } catch (e) {
       console.error("Failed to add schedule:", e);
-      alert("予定の登録に失敗しました。入力内容をお確かめの上、再度お試しください。");
+      alert("予定の登録に失敗しました。");
     }
   };
 
@@ -627,6 +617,7 @@ export function AppProvider({ children }) {
         changeCharacter,
         updateProfileName,
         updateReminderTime,
+        updatePassword,
         sendMessage,
         createDiaryFromChat,
         saveDiaryDirect,
