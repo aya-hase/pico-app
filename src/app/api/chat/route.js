@@ -9,13 +9,13 @@ async function verifyAuth(req) {
     return null;
   }
   const token = authHeader.split(" ")[1];
-  
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Supabase environment variables are missing");
   }
-  
+
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) {
@@ -74,8 +74,8 @@ export async function POST(req) {
 `;
     } else { // frederica
       charInstruction = `
-フレデリカ（サボテン of キャラクター）のペルソナで話してください。
-性格：元気ポジティブ系、全力の応援団。常に前向きでユーザーの味方です。ユーザーを「${userName}」または「${userName}くん/さん」と呼びます。
+フレデリカ（サボテンのキャラクター）のペルソナで話してください。
+性格：元気ポジティブ系、全力の応援団。常に前向きでユーザーの味方です。ユーザーを「${userName}さん」と呼びます。
 話し方の特徴：「〜だよ！」「〜だね！」「サイコーじゃん！」「応援してるよ！」といった元気ハツラツでエネルギッシュな口調。
 `;
     }
@@ -102,9 +102,9 @@ ${charInstruction}
 - もし未確認の予定があり、このメッセージが会話の始まり（または予定について尋ねるのが自然なタイミング）である場合、「今日の予定（例：会議やデート）はどうだった？」と自然に問いかけてください。
 
 【ユーザーの直近の日記データ（長期記憶・参考用）】
-${recentDiaries && recentDiaries.length > 0 
-  ? `※以下はユーザーの直近7日分の出来事や気分です。会話の自然な流れで触れられそうなら「そういえば、こないだの〇〇はどうなった？」や「最近お疲れ気味っぽかったけど大丈夫？」といった気遣いを差し込んでください（不自然であれば無理に触れなくて構いません）。\n${JSON.stringify(recentDiaries)}` 
-  : "（過去の日記データはありません）"}
+${recentDiaries && recentDiaries.length > 0
+        ? `※以下はユーザーの直近7日分の出来事や気分です。会話の自然な流れで触れられそうなら「そういえば、こないだの〇〇はどうなった？」や「最近お疲れ気味っぽかったけど大丈夫？」といった気遣いを差し込んでください（不自然であれば無理に触れなくて構いません）。\n${JSON.stringify(recentDiaries)}`
+        : "（過去の日記データはありません）"}
 
 【予定の新規登録の報告ルール】
 - ユーザーが会話の中で未来の予定を口にし、あなたがそれを下の 'schedules' リストに抽出して登録する場合は、返答テキスト（'reply'）の中で必ず「〇〇と〇〇の予定、カレンダーに入れておいたよ！」のように、**予定を登録したことを言葉でユーザーに伝えてください。**
@@ -206,7 +206,7 @@ ${recentDiaries && recentDiaries.length > 0
     // Clean text and extract first valid JSON block
     let cleanText = replyText.trim();
     cleanText = cleanText.replace(/```json/g, "").replace(/```/g, "").trim();
-    
+
     const jsonOnly = extractFirstJsonObject(cleanText);
     const parsedData = JSON.parse(jsonOnly);
     return NextResponse.json(parsedData);

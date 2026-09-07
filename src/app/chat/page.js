@@ -532,19 +532,6 @@ export default function ChatPage() {
                         )}
                       </div>
                     </div>
-
-                    {/* Greeting Preview */}
-                    <div className="space-y-1.5 pt-2 border-t border-slate-100/60">
-                      <label className="text-xs font-bold text-slate-500">明日キャラクターがかけてくれる言葉（編集できます）</label>
-                      <textarea
-                        value={previewGreeting}
-                        onChange={(e) => setPreviewGreeting(e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 font-medium leading-relaxed resize-none"
-                        placeholder="明日かけるメッセージを入力..."
-                        maxLength={150}
-                      />
-                    </div>
                   </>
                 )}
               </div>

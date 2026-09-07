@@ -93,14 +93,21 @@ export default function HomePage() {
 
     if (isPastReminder && !hasTodayDiary) {
       const uName = profile?.display_name || "ユーザー";
-      const scheduleText = todaySchedules.length > 0 ? `『${todaySchedules[0].event_name}』` : "今日の出来事";
+      const hasSchedule = todaySchedules.length > 0;
+      const eventName = hasSchedule ? `『${todaySchedules[0].event_name}』` : "";
       
       if (character === "clara") {
-        return `${uName}ちゃん、お約束の${reminderTime}を過ぎたよぉ。${scheduleText}はどうだったかなぁ？くららにお話ししよぉ？`;
+        return hasSchedule
+          ? `${uName}ちゃん、お約束の${reminderTime}を過ぎたよぉ。${eventName}はどうだったかなぁ？くららにお話ししよぉ？`
+          : `${uName}ちゃん、お約束の${reminderTime}を過ぎたよぉ。今日の出来事どうだったかなぁ？くららにお話ししよぉ？`;
       } else if (character === "maro") {
-        return `おつかれ〜。設定してた${reminderTime}過ぎてるよ。今日の${scheduleText}とか、そろそろダラダラ話そうよ。`;
+        return hasSchedule
+          ? `おつかれ〜。設定してた${reminderTime}過ぎてるよ。今日の${eventName}とか、そろそろダラダラ話そうよ。`
+          : `おつかれ〜。設定してた${reminderTime}過ぎてるよ。今日の出来事とか、そろそろダラダラ話そうよ。`;
       } else {
-        return `${uName}さん！約束の${reminderTime}になったよ！今日の${scheduleText}のこと、早くフレデリカに教えてー！`;
+        return hasSchedule
+          ? `${uName}さん！約束の${reminderTime}になったよ！今日の${eventName}のこと、早くフレデリカに教えてー！`
+          : `${uName}さん！約束の${reminderTime}になったよ！今日の出来事のこと、早くフレデリカに教えてー！`;
       }
     }
     return null;
